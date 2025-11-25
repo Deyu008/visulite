@@ -80,4 +80,4 @@ VisuLite_SRS.md           # 需求文档
 
 ## 许可证
 
-稍后发布于 GitHub 时可选择 MIT/Apache-2.0 等宽松许可证。
+本项目采用 [MIT 许可证](LICENSE)。
