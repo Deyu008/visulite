@@ -192,8 +192,8 @@ class MainWindow(QMainWindow):
         main_splitter.setStretchFactor(0, 0)  # Sidebar doesn't stretch
         main_splitter.setStretchFactor(1, 1)  # Content area stretches
 
-        # Set initial sizes (sidebar: 320px, content: rest)
-        main_splitter.setSizes([320, 960])
+        # Set initial sizes (sidebar: 450px, content: 830px)
+        main_splitter.setSizes([450, 830])
 
         layout.addWidget(main_splitter)
         self.setCentralWidget(central)

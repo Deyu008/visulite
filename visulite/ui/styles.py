@@ -571,4 +571,69 @@ QTabBar::tab:hover:!selected {
     color: #1a1a1a;
     background-color: #f5f5f5;
 }
+
+/* ============================================
+   Matplotlib Navigation Toolbar - Enhanced Background Focus
+   ============================================ */
+
+#matplotlib-toolbar {
+    background-color: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 4px;
+}
+
+/* 主要样式：为按钮添加方形背景框 */
+#matplotlib-toolbar QToolButton {
+    background-color: #e0e0e0;  /* 默认灰色背景 */
+    border: 1px solid #d0d0d0;
+    border-radius: 4px;
+    padding: 6px;
+    margin: 2px;
+    min-height: 28px;
+    min-width: 28px;
+    icon-size: 16px;
+}
+
+#matplotlib-toolbar QToolButton:hover {
+    background-color: #0078d4;  /* 悬停时蓝色背景 */
+    border-color: #0066cc;
+}
+
+#matplotlib-toolbar QToolButton:pressed {
+    background-color: #0052a3;  /* 按下时更深的蓝色 */
+    border-color: #004080;
+}
+
+#matplotlib-toolbar QToolButton:checked {
+    background-color: #0078d4;  /* 选中状态蓝色背景 */
+    border-color: #0066cc;
+}
+
+#matplotlib-toolbar QToolButton:disabled {
+    background-color: #f5f5f5;
+    border-color: #e0e0e0;
+    color: #999999;
+}
+
+/* 备用选择器：确保样式覆盖 */
+QToolBar QToolButton {
+    background-color: #e0e0e0;
+    border: 1px solid #d0d0d0;
+    border-radius: 4px;
+    padding: 6px;
+    margin: 2px;
+    min-height: 28px;
+    min-width: 28px;
+}
+
+QToolBar QToolButton:hover {
+    background-color: #0078d4;
+    border-color: #0066cc;
+}
+
+QToolBar QToolButton:checked {
+    background-color: #0078d4;
+    border-color: #0066cc;
+}
 """

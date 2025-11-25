@@ -32,17 +32,20 @@ python main.py
 The application follows a layered architecture with clear separation of concerns:
 
 ### Entry Points
+
 - `main.py`: Application entry point that calls `visulite.run_app()`
 - `visulite/app.py`: Application bootstrap with QApplication setup and dark theme
 
 ### Core Layers
 
 **Models Layer** (`visulite/models/`):
+
 - `app_state.py`: Central state management with AppState dataclass holding dataframe and chart config
 - `chart_config.py`: Chart configuration dataclass
 - `dataframe_model.py`: Qt table model for pandas DataFrame display
 
 **Services Layer** (`visulite/services/`):
+
 - `data_loader.py`: Multi-format data import (CSV/TSV/Excel/JSON) with metadata extraction
 - `chart_manager.py`: Matplotlib chart rendering supporting 6 chart types (line, bar, scatter, histogram, boxplot, heatmap)
 - `data_processor.py`: Data preprocessing (filtering, missing value handling)
@@ -52,11 +55,13 @@ The application follows a layered architecture with clear separation of concerns
 - `recent_files.py`: Recent file management for quick access
 
 **UI Layer** (`visulite/ui/`):
+
 - `main_window.py`: Main Qt window with control panels and matplotlib canvas
 - `widgets.py`: Custom Qt widgets including MatplotlibCanvas integration
 - `styles.py`: Application styling with dark theme QSS
 
 **Common** (`visulite/common/`):
+
 - `logging.py`: Centralized logging configuration
 
 ## Key Architecture Patterns
@@ -93,6 +98,7 @@ When extending chart functionality:
 ## Logging Convention
 
 All modules use structured logging with namespace `visulite.<module>` for easy debugging:
+
 ```python
 logger = logging.getLogger("visulite.module_name")
 ```
@@ -113,7 +119,10 @@ logger = logging.getLogger("visulite.module_name")
 ## File Format Support
 
 Supported data formats with automatic detection and encoding support:
+
 - CSV/TSV: pandas.read_csv() with separator detection and multi-encoding fallback
 - Excel: pandas.read_excel() via openpyxl
 - JSON: pandas.read_json() with orient='records' fallback
 - Encoding support: UTF-8, UTF-8-SIG, GBK, GB2312, UTF-16, Latin-1
+
+- Reading images and web searches are both performed using MCP.

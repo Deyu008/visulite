@@ -30,7 +30,8 @@ class ChartWidget(QWidget):
         super().__init__(parent)
         self.canvas = MatplotlibCanvas()
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
-        
+        self.toolbar.setObjectName("matplotlib-toolbar")
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
