@@ -8,7 +8,7 @@ QSS = """
 
 QWidget {
     font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif;
-    font-size: 13px;
+    font-size: 11pt;
     color: #1a1a1a;
 }
 

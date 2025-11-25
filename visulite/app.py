@@ -6,8 +6,8 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import QLocale, Qt
-from PySide6.QtGui import QIcon, QPalette
-from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QFont, QIcon, QPalette
+from PySide6.QtWidgets import QApplication, QToolTip
 
 from .common.logging import configure_logging
 from .ui.main_window import MainWindow
@@ -35,6 +35,16 @@ def run_app() -> int:
 
     # Apply modern QSS style
     app.setStyleSheet(QSS)
+
+    # Ensure a valid default font size to avoid QFont::setPointSize warnings
+    font: QFont = app.font()
+    # Matplotlib/Qt can emit warnings if the font has only pixelSize set.
+    if font.pixelSize() > 0:
+        font.setPixelSize(0)
+    if font.pointSize() <= 0:
+        font.setPointSize(11)
+    app.setFont(font)
+    QToolTip.setFont(font)
 
     window = MainWindow()
     window.show()

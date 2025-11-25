@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg, NavigationToolbar2QT
 from matplotlib.figure import Figure
@@ -23,13 +24,32 @@ class MatplotlibCanvas(FigureCanvasQTAgg):
         return self.figure.axes[0]
 
 
+class LocalizedNavigationToolbar(NavigationToolbar2QT):
+    """Navigation toolbar with Chinese tooltips."""
+
+    toolitems = (
+        ("Home", "重置视图", "home", "home"),
+        ("Back", "后退", "back", "back"),
+        ("Forward", "前进", "forward", "forward"),
+        ("Pan", "平移查看", "move", "pan"),
+        ("Zoom", "框选缩放", "zoom_to_rect", "zoom"),
+        ("Subplots", "子图/边距调整", "subplots", "configure_subplots"),
+        ("Customize", "自定义参数", "qt4_editor_options", "edit_parameters"),
+        ("Save", "保存图像", "filesave", "save_figure"),
+    )
+
+    def __init__(self, canvas, parent=None):
+        super().__init__(canvas, parent)
+        self.setToolButtonStyle(Qt.ToolButtonIconOnly)
+
+
 class ChartWidget(QWidget):
     """Widget containing a matplotlib canvas with navigation toolbar."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.canvas = MatplotlibCanvas()
-        self.toolbar = NavigationToolbar2QT(self.canvas, self)
+        self.toolbar = LocalizedNavigationToolbar(self.canvas, self)
         self.toolbar.setObjectName("matplotlib-toolbar")
 
         layout = QVBoxLayout(self)
