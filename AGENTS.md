@@ -1,0 +1,2 @@
+- Think in English, reply in Chinese
+- Always respond in Chinese. When generating charts, use English for the text inside to prevent garbled characters.
