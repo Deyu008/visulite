@@ -24,7 +24,13 @@ class ChartManager:
 
     SUPPORTED_TYPES = {"line", "bar", "scatter", "histogram", "boxplot", "heatmap"}
 
-    def plot(self, axes: plt.Axes, frame: pd.DataFrame, config: ChartConfig) -> None:
+    def plot(
+        self, 
+        axes: plt.Axes, 
+        frame: pd.DataFrame, 
+        config: ChartConfig,
+        theme: str = "default"
+    ) -> None:
         if config.chart_type not in self.SUPPORTED_TYPES:
             raise ValueError(f"Unsupported chart type {config.chart_type}")
         if not config.x_column:
@@ -32,7 +38,18 @@ class ChartManager:
         if not config.y_columns:
             raise ValueError("At least one Y column is required")
 
-        logger.info("Rendering chart type=%s", config.chart_type)
+        logger.info("Rendering chart type=%s with theme=%s", config.chart_type, theme)
+        
+        # Apply theme
+        if theme and theme != "default":
+            try:
+                plt.style.use(theme)
+            except Exception:
+                logger.warning("Theme '%s' not available, using default", theme)
+                plt.style.use("default")
+        else:
+            plt.style.use("default")
+        
         axes.clear()
 
         if config.chart_type == "histogram":

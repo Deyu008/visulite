@@ -45,17 +45,16 @@ class DataProcessor:
         return result
 
     def fill_missing(self, frame: pd.DataFrame, method: str = "mean") -> pd.DataFrame:
-        strategy_map = {
-            "zero": 0,
-            "mean": frame.mean(numeric_only=True),
-            "median": frame.median(numeric_only=True),
-            "ffill": "ffill",
-            "bfill": "bfill",
-        }
-        strategy = strategy_map.get(method, frame.mean(numeric_only=True))
-        if strategy in {"ffill", "bfill"}:
-            return frame.fillna(method=strategy)  # type: ignore[arg-type]
-        return frame.fillna(strategy)
+        if method == "ffill":
+            return frame.ffill()
+        elif method == "bfill":
+            return frame.bfill()
+        elif method == "zero":
+            return frame.fillna(0)
+        elif method == "median":
+            return frame.fillna(frame.median(numeric_only=True))
+        else:  # default to mean
+            return frame.fillna(frame.mean(numeric_only=True))
 
     def convert_column_type(
         self, frame: pd.DataFrame, column: str, target_type: str

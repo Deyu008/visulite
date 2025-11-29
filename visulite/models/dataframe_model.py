@@ -19,6 +19,11 @@ class DataFrameModel(QAbstractTableModel):
         self.endResetModel()
 
     # Qt overrides
+    def flags(self, index: QModelIndex):  # noqa: N802
+        if not index.isValid():
+            return Qt.NoItemFlags
+        return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+
     def rowCount(self, parent: QModelIndex | None = None) -> int:  # noqa: N802
         return 0 if parent and parent.isValid() else len(self._frame.index)
 
@@ -45,6 +50,26 @@ class DataFrameModel(QAbstractTableModel):
                 else ""
             )
         return str(self._frame.index[section])
+
+    def sort(self, column: int, order: Qt.SortOrder = Qt.AscendingOrder) -> None:  # noqa: N802
+        if self._frame.empty or column < 0 or column >= len(self._frame.columns):
+            return
+        col_name = self._frame.columns[column]
+        series = pd.to_numeric(self._frame[col_name], errors="coerce")
+        if series.notna().any():
+            sort_key = series
+        else:
+            sort_key = self._frame[col_name].astype(str)
+
+        ascending = order == Qt.AscendingOrder
+        self.layoutAboutToBeChanged.emit()
+        self._frame = (
+            self._frame.assign(__sort_key=sort_key)
+            .sort_values(by="__sort_key", ascending=ascending, kind="mergesort")
+            .drop(columns="__sort_key")
+            .reset_index(drop=True)
+        )
+        self.layoutChanged.emit()
 
 
 __all__ = ["DataFrameModel"]

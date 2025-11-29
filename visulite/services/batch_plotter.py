@@ -38,6 +38,7 @@ class BatchPlotter:
         figure_size: tuple[float, float],
         dpi: int,
         fmt: str,
+        theme: str = "default",
     ) -> List[Path]:
         exported: List[Path] = []
         if not source_dir.exists():
@@ -59,7 +60,7 @@ class BatchPlotter:
                 figure = Figure(figsize=figure_size, tight_layout=True)
                 FigureCanvasAgg(figure)
                 axes = figure.add_subplot(111)
-                self.chart_manager.plot(axes, frame, config)
+                self.chart_manager.plot(axes, frame, config, theme=theme)
                 output_path = target_dir / f"{file_path.stem}.{fmt}"
                 self.export_manager.export(figure, output_path, dpi=dpi, fmt=fmt)
                 exported.append(output_path)

@@ -57,6 +57,31 @@ class ChartWidget(QWidget):
         layout.setSpacing(0)
         layout.addWidget(self.toolbar)
         layout.addWidget(self.canvas)
+        
+        # Show welcome message
+        self._show_welcome()
+
+    def _show_welcome(self) -> None:
+        """Display welcome message on empty chart."""
+        ax = self.canvas.axes
+        ax.set_facecolor('#f8f9fa')
+        ax.text(
+            0.5, 0.5,
+            "欢迎使用 VisuLite\n\n"
+            "1. 点击「打开数据文件」或拖放文件到窗口\n"
+            "2. 选择 X 轴和 Y 轴列\n"
+            "3. 点击「更新图表」生成可视化\n\n"
+            "支持格式: CSV, TSV, Excel, JSON",
+            ha='center', va='center',
+            fontsize=12, color='#666666',
+            transform=ax.transAxes,
+            fontfamily='Microsoft YaHei'
+        )
+        ax.set_xticks([])
+        ax.set_yticks([])
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+        self.canvas.draw_idle()
 
     @property
     def figure(self):

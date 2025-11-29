@@ -11,10 +11,10 @@ from PySide6.QtWidgets import QApplication, QToolTip
 
 from .common.logging import configure_logging
 from .ui.main_window import MainWindow
-from .ui.styles import QSS
+from .ui.styles import QSS_LIGHT, QSS_DARK
 
 
-def run_app() -> int:
+def run_app(dark_mode: bool = False) -> int:
     """Entrypoint used by ``python -m visulite`` as well as ``main.py``."""
     configure_logging()
 
@@ -33,8 +33,8 @@ def run_app() -> int:
     if icon_path.exists():
         app.setWindowIcon(QIcon(str(icon_path)))
 
-    # Apply modern QSS style
-    app.setStyleSheet(QSS)
+    # Apply modern QSS style (light or dark)
+    app.setStyleSheet(QSS_DARK if dark_mode else QSS_LIGHT)
 
     # Ensure a valid default font size to avoid QFont::setPointSize warnings
     font: QFont = app.font()

@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import logging
+import os
+import subprocess
 from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
 from PySide6.QtCore import Qt, QSortFilterProxyModel
-from PySide6.QtGui import QAction, QColor
+from PySide6.QtGui import QAction, QColor, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QCheckBox,
     QColorDialog,
@@ -35,6 +37,9 @@ from PySide6.QtWidgets import (
     QSpinBox,
     QSplitter,
     QTableView,
+    QTableWidget,
+    QTableWidgetItem,
+    QPlainTextEdit,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -50,22 +55,46 @@ from visulite.services.data_loader import DataLoader, UnsupportedFormatError
 from visulite.services.data_processor import DataProcessor, FilterCriteria
 from visulite.services.export_manager import ExportManager
 from visulite.services.recent_files import RecentFilesManager
+from visulite.ui.styles import QSS_LIGHT, QSS_DARK
 from visulite.ui.widgets import ChartWidget
 
 logger = logging.getLogger("visulite.ui.main_window")
 
 
+class NumericSortProxy(QSortFilterProxyModel):
+    """Proxy model with numeric-aware sorting for pandas data."""
+
+    def lessThan(self, left, right):  # type: ignore[override]
+        left_data = self.sourceModel().data(left, Qt.DisplayRole)
+        right_data = self.sourceModel().data(right, Qt.DisplayRole)
+
+        def to_float(value):
+            try:
+                return float(str(value))
+            except (TypeError, ValueError):
+                return None
+
+        l_val = to_float(left_data)
+        r_val = to_float(right_data)
+        if l_val is not None and r_val is not None:
+            return l_val < r_val
+        # Fallback to string comparison
+        return str(left_data) < str(right_data)
+
+
 class MainWindow(QMainWindow):
     """Main application window."""
 
+    VERSION = "1.0.0"
+
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("VisuLite - Data Visualization Tool")
-        self.resize(1280, 720)
+        self.setWindowTitle(f"VisuLite v{self.VERSION} - 轻量级数据可视化工具")
+        self.resize(1400, 800)
 
         self.state = AppState()
         self.table_model = DataFrameModel()
-        self.proxy_model = QSortFilterProxyModel()
+        self.proxy_model = NumericSortProxy()
         self.proxy_model.setSourceModel(self.table_model)
         self.data_loader = DataLoader()
         self.chart_manager = ChartManager()
@@ -74,9 +103,14 @@ class MainWindow(QMainWindow):
         self.data_processor = DataProcessor()
         self.recent_files_manager = RecentFilesManager()
         self.selected_color: str = "auto"
+        self.chart_theme: str = "default"  # Chart matplotlib style
 
         self._build_menu_bar()
         self._build_ui()
+        self._setup_shortcuts()
+        
+        # Enable drag and drop
+        self.setAcceptDrops(True)
 
     # Menu bar -----------------------------------------------------------------------
 
@@ -124,6 +158,137 @@ class MainWindow(QMainWindow):
         load_config_action = QAction("加载配置(&L)", self)
         load_config_action.triggered.connect(self._on_load_config)
         edit_menu.addAction(load_config_action)
+
+        # View menu
+        view_menu = menu_bar.addMenu("视图(&V)")
+        
+        refresh_action = QAction("刷新图表(&R)", self)
+        refresh_action.setShortcut("F5")
+        refresh_action.triggered.connect(self._on_update_chart)
+        view_menu.addAction(refresh_action)
+
+        reset_data_action = QAction("重置数据(&D)", self)
+        reset_data_action.triggered.connect(self._reset_dataset)
+        view_menu.addAction(reset_data_action)
+
+        view_menu.addSeparator()
+
+        # Chart theme submenu
+        theme_menu = QMenu("图表主题(&T)", self)
+        self.theme_actions = {}
+        for theme_name, theme_label in [
+            ("default", "默认"),
+            ("seaborn-v0_8-whitegrid", "Seaborn 白格"),
+            ("ggplot", "GGPlot"),
+            ("bmh", "BMH"),
+            ("dark_background", "深色背景"),
+            ("fivethirtyeight", "FiveThirtyEight"),
+        ]:
+            action = QAction(theme_label, self)
+            action.setCheckable(True)
+            action.setChecked(theme_name == "default")
+            action.triggered.connect(lambda checked, t=theme_name: self._set_chart_theme(t))
+            self.theme_actions[theme_name] = action
+            theme_menu.addAction(action)
+        view_menu.addMenu(theme_menu)
+
+        view_menu.addSeparator()
+
+        # UI Theme (Light/Dark mode)
+        self.dark_mode_action = QAction("深色模式(&D)", self)
+        self.dark_mode_action.setCheckable(True)
+        self.dark_mode_action.setChecked(False)
+        self.dark_mode_action.triggered.connect(self._toggle_dark_mode)
+        view_menu.addAction(self.dark_mode_action)
+
+        # Help menu
+        help_menu = menu_bar.addMenu("帮助(&H)")
+        
+        about_action = QAction("关于 VisuLite(&A)", self)
+        about_action.triggered.connect(self._show_about)
+        help_menu.addAction(about_action)
+
+        shortcuts_action = QAction("快捷键列表(&K)", self)
+        shortcuts_action.setShortcut("F1")
+        shortcuts_action.triggered.connect(self._show_shortcuts)
+        help_menu.addAction(shortcuts_action)
+
+    def _setup_shortcuts(self) -> None:
+        """Setup additional keyboard shortcuts."""
+        # Update chart with Enter
+        QShortcut(QKeySequence(Qt.Key_Return), self, self._on_update_chart)
+        # Quick export with Ctrl+Shift+E
+        QShortcut(QKeySequence("Ctrl+Shift+E"), self, self._quick_export)
+
+    def _set_chart_theme(self, theme: str) -> None:
+        """Set the matplotlib chart theme."""
+        self.chart_theme = theme
+        # Update checkmarks
+        for name, action in self.theme_actions.items():
+            action.setChecked(name == theme)
+        # Refresh chart if data is loaded
+        if self.state.has_data():
+            self._on_update_chart()
+        self.statusBar().showMessage(f"图表主题已切换")
+
+    def _show_about(self) -> None:
+        """Show about dialog."""
+        QMessageBox.about(
+            self,
+            "关于 VisuLite",
+            f"""<h2>VisuLite v{self.VERSION}</h2>
+            <p>轻量级数据可视化与分析工具</p>
+            <p><b>功能特性：</b></p>
+            <ul>
+                <li>支持 CSV、TSV、Excel、JSON 数据文件</li>
+                <li>多种图表类型：折线图、柱状图、散点图等</li>
+                <li>数据预处理：筛选、类型转换、缺失值处理</li>
+                <li>高质量图表导出 (PNG/JPG/PDF/SVG)</li>
+                <li>批量绘图和配置管理</li>
+            </ul>
+            <p>基于 PySide6 + Matplotlib 构建</p>
+            <p>© 2024-2025 VisuLite Team</p>"""
+        )
+
+    def _show_shortcuts(self) -> None:
+        """Show keyboard shortcuts dialog."""
+        shortcuts_text = """
+        <h3>键盘快捷键</h3>
+        <table cellpadding="5">
+            <tr><td><b>Ctrl+O</b></td><td>打开文件</td></tr>
+            <tr><td><b>Ctrl+S</b></td><td>保存配置</td></tr>
+            <tr><td><b>Ctrl+E</b></td><td>导出图表</td></tr>
+            <tr><td><b>Ctrl+Shift+E</b></td><td>快速导出 (PNG)</td></tr>
+            <tr><td><b>F5 / Enter</b></td><td>刷新图表</td></tr>
+            <tr><td><b>Ctrl+Q</b></td><td>退出程序</td></tr>
+            <tr><td><b>F1</b></td><td>显示此帮助</td></tr>
+        </table>
+        """
+        QMessageBox.information(self, "快捷键列表", shortcuts_text)
+
+    def _toggle_dark_mode(self, checked: bool) -> None:
+        """Toggle between light and dark mode."""
+        from PySide6.QtWidgets import QApplication
+        app = QApplication.instance()
+        if app:
+            app.setStyleSheet(QSS_DARK if checked else QSS_LIGHT)
+            self.statusBar().showMessage("已切换到" + ("深色模式" if checked else "浅色模式"))
+
+    def _quick_export(self) -> None:
+        """Quick export chart as PNG to desktop."""
+        if not self.chart_widget.figure.axes:
+            self.statusBar().showMessage("请先绘制图表")
+            return
+        
+        desktop = Path.home() / "Desktop"
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        target = desktop / f"VisuLite_Chart_{timestamp}.png"
+        
+        try:
+            self.export_manager.export(self.chart_widget.figure, target, dpi=300)
+            self.statusBar().showMessage(f"已快速导出到桌面: {target.name}")
+        except Exception as exc:
+            self.statusBar().showMessage(f"导出失败: {exc}")
 
     def _update_recent_files_menu(self) -> None:
         self.recent_menu.clear()
@@ -176,6 +341,7 @@ class MainWindow(QMainWindow):
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         scroll_area.setFrameShape(QFrame.NoFrame)
+        scroll_area.setViewportMargins(0, 0, 4, 0)  # Right margin for content to avoid scrollbar overlap
 
         control_panel = self._build_control_panel()
         scroll_area.setWidget(control_panel)
@@ -254,10 +420,25 @@ class MainWindow(QMainWindow):
         self.x_combo = QComboBox()
         form_layout.addRow("X 轴列", self.x_combo)
 
+        y_container = QVBoxLayout()
+        y_container.setSpacing(4)
         self.y_list = QListWidget()
         self.y_list.setSelectionMode(QListWidget.MultiSelection)
         self.y_list.setMinimumHeight(110)
-        form_layout.addRow("Y 轴列", self.y_list)
+        y_container.addWidget(self.y_list)
+        
+        y_button_row = QHBoxLayout()
+        y_button_row.setSpacing(6)
+        self.select_all_y_button = QPushButton("全选")
+        self.select_all_y_button.setFixedHeight(24)
+        self.select_all_y_button.clicked.connect(self._select_all_y_columns)
+        y_button_row.addWidget(self.select_all_y_button)
+        self.deselect_all_y_button = QPushButton("全不选")
+        self.deselect_all_y_button.setFixedHeight(24)
+        self.deselect_all_y_button.clicked.connect(self._deselect_all_y_columns)
+        y_button_row.addWidget(self.deselect_all_y_button)
+        y_container.addLayout(y_button_row)
+        form_layout.addRow("Y 轴列", y_container)
 
         self.chart_type_combo = QComboBox()
         self.chart_type_combo.addItem("折线图", "line")
@@ -266,13 +447,15 @@ class MainWindow(QMainWindow):
         self.chart_type_combo.addItem("直方图", "histogram")
         self.chart_type_combo.addItem("箱线图", "boxplot")
         self.chart_type_combo.addItem("热力图", "heatmap")
+        self.chart_type_combo.currentIndexChanged.connect(self._on_chart_type_changed)
         form_layout.addRow("图表类型", self.chart_type_combo)
 
         self.line_style_combo = QComboBox()
         self.line_style_combo.addItem("实线", "-")
         self.line_style_combo.addItem("虚线", "--")
         self.line_style_combo.addItem("点划线", "-.")
-        form_layout.addRow("线型", self.line_style_combo)
+        self.line_style_label = QLabel("线型")
+        form_layout.addRow(self.line_style_label, self.line_style_combo)
 
         # Marker style selection
         self.marker_style_combo = QComboBox()
@@ -283,7 +466,8 @@ class MainWindow(QMainWindow):
         self.marker_style_combo.addItem("方形 (s)", "s")
         self.marker_style_combo.addItem("三角形 (^)", "^")
         self.marker_style_combo.addItem("菱形 (D)", "D")
-        form_layout.addRow("点样式", self.marker_style_combo)
+        self.marker_style_label = QLabel("点样式")
+        form_layout.addRow(self.marker_style_label, self.marker_style_combo)
 
         # Color selection
         color_row = QHBoxLayout()
@@ -464,13 +648,38 @@ class MainWindow(QMainWindow):
     def _build_stats_group(self) -> QFrame:
         card, layout = self._create_card("数据统计")
         
-        self.stats_view = QTextEdit()
-        self.stats_view.setReadOnly(True)
-        self.stats_view.setPlaceholderText("加载数据后显示统计信息")
-        self.stats_view.setMinimumHeight(120)
-        layout.addWidget(self.stats_view)
+        # Stats info label
+        self.stats_info_label = QLabel("加载数据后显示统计信息")
+        self.stats_info_label.setStyleSheet("color: #888; padding: 8px;")
+        layout.addWidget(self.stats_info_label)
+        
+        # Stats table
+        self.stats_table = QTableWidget()
+        self.stats_table.setMinimumHeight(220)
+        self.stats_table.setAlternatingRowColors(True)
+        self.stats_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.stats_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.stats_table.horizontalHeader().setStretchLastSection(True)
+        self.stats_table.verticalHeader().setVisible(False)
+        self.stats_table.setStyleSheet("""
+            QTableWidget {
+                border: 1px solid #e0e0e0;
+                border-radius: 4px;
+                gridline-color: #f0f0f0;
+            }
+            QTableWidget::item {
+                padding: 6px 10px;
+            }
+            QHeaderView::section {
+                background-color: #f8f9fa;
+                border: none;
+                border-bottom: 2px solid #0078d4;
+                padding: 8px 10px;
+                font-weight: bold;
+            }
+        """)
+        layout.addWidget(self.stats_table)
         return card
-
     def _build_content_area(self) -> QWidget:
         splitter = QSplitter(Qt.Vertical)
         splitter.setHandleWidth(1) # Thinner splitter handle
@@ -480,7 +689,8 @@ class MainWindow(QMainWindow):
         self.table_view.setSortingEnabled(True)
         self.table_view.horizontalHeader().setStretchLastSection(True)
         self.table_view.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.table_view.setAlternatingRowColors(True) # Better readability
+        self.table_view.setAlternatingRowColors(True)  # Better readability
+        self.table_view.verticalHeader().setVisible(True)  # Show row numbers
 
         self.chart_widget = ChartWidget()
         splitter.addWidget(self.table_view)
@@ -489,7 +699,51 @@ class MainWindow(QMainWindow):
         splitter.setStretchFactor(1, 2)
         return splitter
 
+    # Drag and drop support -----------------------------------------------------------
+
+    def dragEnterEvent(self, event) -> None:
+        """Accept drag events for supported file types."""
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                file_path = Path(url.toLocalFile())
+                if file_path.suffix.lower() in self.data_loader.SUPPORTED_EXTENSIONS:
+                    event.acceptProposedAction()
+                    return
+        event.ignore()
+
+    def dropEvent(self, event) -> None:
+        """Handle dropped files."""
+        for url in event.mimeData().urls():
+            file_path = Path(url.toLocalFile())
+            if file_path.suffix.lower() in self.data_loader.SUPPORTED_EXTENSIONS:
+                self._load_file(file_path)
+                break  # Only load the first valid file
+
     # Event handlers ------------------------------------------------------------------
+
+    def _on_chart_type_changed(self, index: int) -> None:
+        """Show/hide controls based on chart type."""
+        chart_type = self.chart_type_combo.currentData()
+        
+        # Line style is only relevant for line charts
+        line_relevant = chart_type == "line"
+        self.line_style_combo.setVisible(line_relevant)
+        self.line_style_label.setVisible(line_relevant)
+        
+        # Marker style is relevant for line and scatter charts
+        marker_relevant = chart_type in {"line", "scatter"}
+        self.marker_style_combo.setVisible(marker_relevant)
+        self.marker_style_label.setVisible(marker_relevant)
+
+    def _select_all_y_columns(self) -> None:
+        """Select all items in Y column list."""
+        for i in range(self.y_list.count()):
+            self.y_list.item(i).setSelected(True)
+
+    def _deselect_all_y_columns(self) -> None:
+        """Deselect all items in Y column list."""
+        for i in range(self.y_list.count()):
+            self.y_list.item(i).setSelected(False)
 
     def _on_color_changed(self, index: int) -> None:
         if self.color_combo.currentData() == "custom":
@@ -535,7 +789,10 @@ class MainWindow(QMainWindow):
         self.recent_files_manager.add_file(file_path)
         self._update_recent_files_menu()
         
-        self.statusBar().showMessage(f"已加载 {meta.path.name} ({meta.rows} 行)")
+        # Update window title with filename
+        self.setWindowTitle(f"VisuLite v{self.VERSION} - {meta.path.name}")
+        
+        self.statusBar().showMessage(f"已加载 {meta.path.name} ({meta.rows:,} 行 × {meta.columns} 列)")
 
     def _on_update_chart(self) -> None:
         if not self.state.has_data():
@@ -544,7 +801,12 @@ class MainWindow(QMainWindow):
         config = self._collect_chart_config()
         self.state.chart_config = config
         try:
-            self.chart_manager.plot(self.chart_widget.axes, self.state.data_frame, config)  # type: ignore[arg-type]
+            self.chart_manager.plot(
+                self.chart_widget.axes, 
+                self.state.data_frame, 
+                config,
+                theme=self.chart_theme
+            )  # type: ignore[arg-type]
         except Exception as exc:  # pragma: no cover - GUI feedback
             QMessageBox.warning(self, "绘图失败", str(exc))
             logger.exception("Chart rendering error")
@@ -576,11 +838,46 @@ class MainWindow(QMainWindow):
             self.export_manager.export(
                 figure, Path(target), dpi=self.dpi_spin.value()
             )
-            self.statusBar().showMessage(f"已导出到 {target}")
+            self._show_export_success(Path(target))
         except Exception as exc:  # pragma: no cover
             QMessageBox.critical(self, "导出失败", str(exc))
         finally:
             figure.set_size_inches(*original_size, forward=True)
+
+    def _show_export_success(self, file_path: Path) -> None:
+        """Show export success dialog with options to open file or folder."""
+        msg = QMessageBox(self)
+        msg.setWindowTitle("导出成功")
+        msg.setText(f"图表已成功导出到:\n{file_path}")
+        msg.setIcon(QMessageBox.Information)
+        
+        open_file_btn = msg.addButton("打开文件", QMessageBox.ActionRole)
+        open_folder_btn = msg.addButton("打开文件夹", QMessageBox.ActionRole)
+        msg.addButton("关闭", QMessageBox.RejectRole)
+        
+        msg.exec()
+        
+        clicked = msg.clickedButton()
+        if clicked == open_file_btn:
+            self._open_file_in_system(file_path)
+        elif clicked == open_folder_btn:
+            self._open_folder_in_explorer(file_path.parent)
+        
+        self.statusBar().showMessage(f"已导出到 {file_path}")
+
+    def _open_file_in_system(self, file_path: Path) -> None:
+        """Open file with default system application."""
+        try:
+            os.startfile(str(file_path))
+        except Exception as exc:
+            logger.warning("Failed to open file: %s", exc)
+
+    def _open_folder_in_explorer(self, folder_path: Path) -> None:
+        """Open folder in system file explorer."""
+        try:
+            subprocess.run(["explorer", str(folder_path)], check=False)
+        except Exception as exc:
+            logger.warning("Failed to open folder: %s", exc)
 
     def _generate_export_filename(self) -> str:
         """Generate filename based on the template."""
@@ -602,7 +899,10 @@ class MainWindow(QMainWindow):
             source_dir, target_dir, config, fig_size, dpi, fmt = dialog.get_settings()
             batch_plotter = BatchPlotter(self.data_loader, self.chart_manager, self.export_manager)
             try:
-                exported = batch_plotter.run(source_dir, target_dir, config, fig_size, dpi, fmt)
+                exported = batch_plotter.run(
+                    source_dir, target_dir, config, fig_size, dpi, fmt, 
+                    theme=self.chart_theme
+                )
                 QMessageBox.information(self, "完成", f"成功导出 {len(exported)} 个图表到 {target_dir}")
             except Exception as exc:
                 QMessageBox.critical(self, "批量绘图失败", str(exc))
@@ -796,23 +1096,107 @@ class MainWindow(QMainWindow):
 
     def _refresh_stats(self) -> None:
         if not self.state.has_data():
-            self.stats_view.clear()
+            self.stats_table.setRowCount(0)
+            self.stats_table.setColumnCount(0)
+            self.stats_info_label.setText("加载数据后显示统计信息")
+            self.stats_info_label.setStyleSheet("color: #888; padding: 8px;")
             return
         frame = self.state.data_frame
         if frame is None or frame.empty:
-            self.stats_view.clear()
+            self.stats_table.setRowCount(0)
+            self.stats_table.setColumnCount(0)
+            self.stats_info_label.setText("数据为空")
             return
         try:
-            stats = (
-                frame.describe(include="all")
-                .transpose()
-                .round(3)
-                .fillna("")
-                .head(12)
+            self._populate_stats_table(frame)
+            num_cols = len(frame.columns)
+            numeric_cols = len(frame.select_dtypes(include=['number']).columns)
+            self.stats_info_label.setText(
+                f"📊 共 {len(frame)} 行 × {num_cols} 列 | 数值列: {numeric_cols} 个"
             )
-            self.stats_view.setPlainText(stats.to_string())
-        except Exception:
-            self.stats_view.setPlainText("统计信息生成失败")
+            self.stats_info_label.setStyleSheet("color: #0078d4; padding: 8px; font-weight: bold;")
+        except Exception as exc:
+            logger.exception("Failed to generate stats")
+            self.stats_info_label.setText(f"❌ 统计信息生成失败: {exc}")
+            self.stats_info_label.setStyleSheet("color: #d32f2f; padding: 8px;")
+
+    def _populate_stats_table(self, frame: pd.DataFrame) -> None:
+        """Populate the stats table with descriptive statistics."""
+        # Column name translations
+        header_map = {
+            "column": "列名",
+            "count": "计数",
+            "mean": "平均值",
+            "std": "标准差",
+            "min": "最小值",
+            "25%": "25%分位",
+            "50%": "中位数",
+            "75%": "75%分位",
+            "max": "最大值"
+        }
+        
+        numeric_frame = frame.select_dtypes(include=['number'])
+        
+        if numeric_frame.empty:
+            # Show basic info for non-numeric data
+            self.stats_table.setColumnCount(3)
+            self.stats_table.setHorizontalHeaderLabels(["列名", "数据类型", "非空值数"])
+            self.stats_table.setRowCount(len(frame.columns))
+            
+            for row, col in enumerate(frame.columns):
+                dtype = str(frame[col].dtype)
+                non_null = frame[col].count()
+                self.stats_table.setItem(row, 0, QTableWidgetItem(col))
+                self.stats_table.setItem(row, 1, QTableWidgetItem(dtype))
+                self.stats_table.setItem(row, 2, QTableWidgetItem(str(non_null)))
+            
+            self.stats_table.resizeColumnsToContents()
+            return
+        
+        # Get descriptive statistics
+        desc = numeric_frame.describe().transpose()
+        col_order = ["count", "mean", "std", "min", "25%", "50%", "75%", "max"]
+        available = [c for c in col_order if c in desc.columns]
+        desc = desc[available].reset_index().rename(columns={"index": "column"})
+        
+        # Setup table
+        self.stats_table.setColumnCount(len(desc.columns))
+        self.stats_table.setRowCount(len(desc))
+        
+        # Set headers with Chinese names
+        headers = [header_map.get(c, c) for c in desc.columns]
+        self.stats_table.setHorizontalHeaderLabels(headers)
+        
+        # Format function
+        def fmt(val):
+            if pd.isna(val):
+                return "-"
+            if isinstance(val, float):
+                if abs(val) >= 1000:
+                    return f"{val:,.2f}"
+                elif abs(val) < 0.01 and val != 0:
+                    return f"{val:.4e}"
+                else:
+                    return f"{val:.4g}"
+            if isinstance(val, int):
+                return f"{val:,}"
+            return str(val)
+        
+        # Populate table
+        for row_idx in range(len(desc)):
+            for col_idx, col_name in enumerate(desc.columns):
+                val = desc.iloc[row_idx, col_idx]
+                item = QTableWidgetItem(fmt(val))
+                
+                # Center align numeric values, left align column names
+                if col_name == "column":
+                    item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                else:
+                    item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                
+                self.stats_table.setItem(row_idx, col_idx, item)
+        
+        self.stats_table.resizeColumnsToContents()
 
     @staticmethod
     def _parse_float(text: str) -> float | None:
