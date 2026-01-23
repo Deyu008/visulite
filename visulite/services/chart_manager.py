@@ -33,10 +33,10 @@ class ChartManager:
     ) -> None:
         if config.chart_type not in self.SUPPORTED_TYPES:
             raise ValueError(f"Unsupported chart type {config.chart_type}")
-        if not config.x_column:
-            raise ValueError("X column not selected")
         if not config.y_columns:
             raise ValueError("At least one Y column is required")
+        if config.chart_type in {"line", "bar", "scatter"} and not config.x_column:
+            raise ValueError("X column not selected")
 
         logger.info("Rendering chart type=%s with theme=%s", config.chart_type, theme)
         
