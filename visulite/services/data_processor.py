@@ -27,7 +27,9 @@ class DataProcessor:
         if criteria.text_filters:
             for column, keyword in criteria.text_filters.items():
                 if column in result.columns and keyword:
-                    mask = result[column].astype(str).str.contains(keyword, case=False, na=False)
+                    mask = result[column].astype(str).str.contains(
+                        keyword, case=False, na=False, regex=False
+                    )
                     result = result[mask]
 
         if criteria.numeric_ranges:

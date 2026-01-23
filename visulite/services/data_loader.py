@@ -24,13 +24,26 @@ class DataLoader:
     # Common encodings to try in order
     ENCODINGS: List[str] = ["utf-8", "utf-8-sig", "gbk", "gb2312", "utf-16", "latin-1"]
 
+    def __init__(self) -> None:
+        self._encoding_cache: dict[Path, tuple[float, str]] = {}
+
     def _detect_encoding(self, file_path: Path) -> str:
         """Try multiple encodings and return the first one that works."""
+        try:
+            stat = file_path.stat()
+        except OSError:
+            stat = None
+        if stat is not None:
+            cached = self._encoding_cache.get(file_path)
+            if cached and cached[0] == stat.st_mtime:
+                return cached[1]
         for encoding in self.ENCODINGS:
             try:
                 with open(file_path, "r", encoding=encoding) as f:
                     f.read(8192)  # Read first 8KB to test
                 logger.info("Detected encoding: %s", encoding)
+                if stat is not None:
+                    self._encoding_cache[file_path] = (stat.st_mtime, encoding)
                 return encoding
             except (UnicodeDecodeError, UnicodeError):
                 continue
