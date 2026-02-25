@@ -8,6 +8,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg, NavigationToolb
 from matplotlib.figure import Figure
 
 
+
 class MatplotlibCanvas(FigureCanvasQTAgg):
     """Lightweight matplotlib canvas with default figure."""
 
@@ -51,6 +52,7 @@ class ChartWidget(QWidget):
         self.canvas = MatplotlibCanvas()
         self.toolbar = LocalizedNavigationToolbar(self.canvas, self)
         self.toolbar.setObjectName("matplotlib-toolbar")
+        self._dark_mode = False
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -61,10 +63,28 @@ class ChartWidget(QWidget):
         # Show welcome message
         self._show_welcome()
 
+    def apply_theme(self, dark: bool) -> None:
+        self._dark_mode = bool(dark)
+        # Only re-render the welcome state to avoid overwriting user plots.
+        ax = self.canvas.axes
+        if any("欢迎使用 VisuLite" in (t.get_text() or "") for t in ax.texts):
+            self._show_welcome()
+
     def _show_welcome(self) -> None:
         """Display welcome message on empty chart."""
+        # Keep ChartWidget loosely coupled to styling implementation.
+        chart_bg = "#f8f9fa"
+        text_muted = "#666666"
+        try:
+            from visulite.ui import styles
+
+            tokens = styles.DARK_TOKENS if self._dark_mode else styles.LIGHT_TOKENS
+            chart_bg = getattr(tokens, "chart_bg", chart_bg)
+            text_muted = getattr(tokens, "text_muted", text_muted)
+        except Exception:
+            pass
         ax = self.canvas.axes
-        ax.set_facecolor('#f8f9fa')
+        ax.set_facecolor(chart_bg)
         ax.text(
             0.5, 0.5,
             "欢迎使用 VisuLite\n\n"
@@ -73,7 +93,7 @@ class ChartWidget(QWidget):
             "3. 点击「更新图表」生成可视化\n\n"
             "支持格式: CSV, TSV, Excel, JSON",
             ha='center', va='center',
-            fontsize=12, color='#666666',
+            fontsize=12, color=text_muted,
             transform=ax.transAxes,
             fontfamily='Microsoft YaHei'
         )

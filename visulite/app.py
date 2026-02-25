@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QApplication, QToolTip
 
 from .common.logging import configure_logging
 from .ui.main_window import MainWindow
+from .ui.runtime_tweaks import install_popup_tweaks
 from .ui.styles import QSS_LIGHT, QSS_DARK
 
 
@@ -24,6 +25,12 @@ def run_app(dark_mode: bool = False) -> int:
             Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
         )
         app = QApplication(sys.argv)
+
+    # Use a consistent widget style so QSS is applied predictably across Windows versions.
+    try:
+        app.setStyle("Fusion")
+    except Exception:
+        pass
     app.setApplicationName("VisuLite")
     app.setOrganizationName("VisuLite")
     app.setApplicationDisplayName("VisuLite - Lightweight Visual Analytics")
@@ -35,6 +42,9 @@ def run_app(dark_mode: bool = False) -> int:
 
     # Apply modern QSS style (light or dark)
     app.setStyleSheet(QSS_DARK if dark_mode else QSS_LIGHT)
+
+    # Fix popup corners/shadows that QSS alone cannot reliably handle.
+    install_popup_tweaks(app)
 
     # Ensure a valid default font size to avoid QFont::setPointSize warnings
     font: QFont = app.font()

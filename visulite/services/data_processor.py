@@ -35,11 +35,14 @@ class DataProcessor:
         if criteria.numeric_ranges:
             for column, (min_v, max_v) in criteria.numeric_ranges.items():
                 if column in result.columns:
-                    series = pd.to_numeric(result[column], errors="coerce")
                     if min_v is not None:
-                        result = result[series >= min_v]
+                        series = pd.to_numeric(result[column], errors="coerce")
+                        mask = series >= min_v
+                        result = result.loc[mask.reindex(result.index, fill_value=False)]
                     if max_v is not None:
-                        result = result[series <= max_v]
+                        series = pd.to_numeric(result[column], errors="coerce")
+                        mask = series <= max_v
+                        result = result.loc[mask.reindex(result.index, fill_value=False)]
 
         if criteria.dropna_columns:
             result = result.dropna(subset=list(criteria.dropna_columns))

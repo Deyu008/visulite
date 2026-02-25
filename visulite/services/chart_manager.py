@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import logging
-from typing import Sequence, List
+import inspect
+from typing import Sequence, List, Optional
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.colorbar import Colorbar
 
 from visulite.models.chart_config import ChartConfig
 
@@ -24,6 +26,22 @@ class ChartManager:
 
     SUPPORTED_TYPES = {"line", "bar", "scatter", "histogram", "boxplot", "heatmap"}
 
+    def __init__(self) -> None:
+        self._heatmap_colorbar: Optional[Colorbar] = None
+
+    def _clear_heatmap_colorbar(self, figure: Optional[plt.Figure] = None) -> None:
+        """Remove cached heatmap colorbar if it belongs to the target figure."""
+        if self._heatmap_colorbar is None:
+            return
+        if figure is not None and self._heatmap_colorbar.ax.figure is not figure:
+            return
+        try:
+            self._heatmap_colorbar.remove()
+        except Exception:  # pragma: no cover - defensive cleanup
+            logger.debug("Failed to remove previous heatmap colorbar", exc_info=True)
+        finally:
+            self._heatmap_colorbar = None
+
     def plot(
         self, 
         axes: plt.Axes, 
@@ -33,9 +51,10 @@ class ChartManager:
     ) -> None:
         if config.chart_type not in self.SUPPORTED_TYPES:
             raise ValueError(f"Unsupported chart type {config.chart_type}")
+        requires_xy = config.chart_type in {"line", "bar", "scatter"}
         if not config.y_columns:
             raise ValueError("At least one Y column is required")
-        if config.chart_type in {"line", "bar", "scatter"} and not config.x_column:
+        if requires_xy and not config.x_column:
             raise ValueError("X column not selected")
 
         logger.info("Rendering chart type=%s with theme=%s", config.chart_type, theme)
@@ -49,7 +68,9 @@ class ChartManager:
                 plt.style.use("default")
         else:
             plt.style.use("default")
-        
+
+        # Heatmap colorbar is a separate axes and needs explicit cleanup.
+        self._clear_heatmap_colorbar(axes.figure)
         axes.clear()
 
         if config.chart_type == "histogram":
@@ -71,7 +92,9 @@ class ChartManager:
             axes.set_ylabel(config.y_label)
         
         if config.show_legend:
-            axes.legend(loc="best")
+            handles, labels = axes.get_legend_handles_labels()
+            if handles:
+                axes.legend(loc="best")
         canvas = getattr(axes.figure, "canvas", None)
         if canvas is not None:
             canvas.draw_idle()
@@ -130,20 +153,27 @@ class ChartManager:
         if not numeric_columns:
             raise ValueError("Boxplot requires at least one numeric column")
         data = [frame[col].dropna() for col in numeric_columns]
-        axes.boxplot(data, labels=list(numeric_columns), vert=True, patch_artist=True)
+        kwargs = {"vert": True, "patch_artist": True}
+        # Matplotlib 3.9 renamed `labels` to `tick_labels`; keep both-version compatibility.
+        if "tick_labels" in inspect.signature(axes.boxplot).parameters:
+            kwargs["tick_labels"] = list(numeric_columns)
+        else:
+            kwargs["labels"] = list(numeric_columns)
+        axes.boxplot(data, **kwargs)
 
     def _plot_heatmap(self, axes: plt.Axes, frame: pd.DataFrame, config: ChartConfig) -> None:
         numeric_frame = frame[config.y_columns].select_dtypes(include="number")
         if numeric_frame.empty:
             raise ValueError("Heatmap requires numeric columns")
         corr = numeric_frame.corr()
-        axes.clear()
         image = axes.imshow(corr, cmap="viridis", aspect="auto")
         axes.set_xticks(range(len(corr.columns)))
         axes.set_yticks(range(len(corr.index)))
         axes.set_xticklabels(corr.columns, rotation=45, ha="right")
         axes.set_yticklabels(corr.index)
-        axes.figure.colorbar(image, ax=axes, fraction=0.046, pad=0.04)
+        self._heatmap_colorbar = axes.figure.colorbar(
+            image, ax=axes, fraction=0.046, pad=0.04
+        )
 
 
 __all__ = ["ChartManager"]

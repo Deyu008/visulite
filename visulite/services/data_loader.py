@@ -48,7 +48,9 @@ class DataLoader:
             except (UnicodeDecodeError, UnicodeError):
                 continue
         # Fallback to utf-8 with error handling
-        logger.warning("Could not detect encoding, falling back to utf-8 with errors='replace'")
+        logger.warning(
+            "Could not detect encoding, falling back to utf-8 with encoding_errors='replace'"
+        )
         return "utf-8"
 
     def load(self, file_path: Path) -> Tuple[pd.DataFrame, DatasetMeta]:
@@ -63,13 +65,17 @@ class DataLoader:
             try:
                 frame = pd.read_csv(file_path, encoding=encoding)
             except UnicodeDecodeError:
-                frame = pd.read_csv(file_path, encoding="utf-8", errors="replace")
+                frame = pd.read_csv(
+                    file_path, encoding="utf-8", encoding_errors="replace"
+                )
         elif suffix == ".tsv":
             encoding = self._detect_encoding(file_path)
             try:
                 frame = pd.read_csv(file_path, sep="\t", encoding=encoding)
             except UnicodeDecodeError:
-                frame = pd.read_csv(file_path, sep="\t", encoding="utf-8", errors="replace")
+                frame = pd.read_csv(
+                    file_path, sep="\t", encoding="utf-8", encoding_errors="replace"
+                )
         elif suffix in {".xlsx", ".xls"}:
             frame = pd.read_excel(file_path)
         else:  # json
