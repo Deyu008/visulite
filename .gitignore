@@ -24,6 +24,7 @@ MANIFEST
 # PyInstaller
 *.manifest
 *.spec
+!VisuLite.spec
 
 # Unit test / coverage reports
 htmlcov/
