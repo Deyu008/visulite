@@ -570,9 +570,14 @@ class MainWindow(QMainWindow):
         bar = SurfaceFrame(surface="glass")
         bar.setObjectName("command-bar")
 
-        layout = QHBoxLayout(bar)
-        layout.setContentsMargins(20, 14, 20, 14)
-        layout.setSpacing(14)
+        root = QVBoxLayout(bar)
+        root.setContentsMargins(20, 14, 20, 14)
+        root.setSpacing(10)
+
+        # Row 1: brand on the left, actions on the right.
+        top_row = QHBoxLayout()
+        top_row.setSpacing(14)
+        root.addLayout(top_row)
 
         brand_layout = QVBoxLayout()
         brand_layout.setSpacing(2)
@@ -582,8 +587,53 @@ class MainWindow(QMainWindow):
         subtitle.setObjectName("hero-subtitle")
         brand_layout.addWidget(title)
         brand_layout.addWidget(subtitle)
-        # Avoid stretching the brand block to fill the whole bar.
-        layout.addLayout(brand_layout)
+        top_row.addLayout(brand_layout)
+        top_row.setAlignment(brand_layout, Qt.AlignVCenter)
+
+        top_row.addStretch(1)
+
+        quick_open = QPushButton("打开数据")
+        quick_open.setProperty("class", "primary")
+        quick_open.clicked.connect(self._on_open_file)
+        top_row.addWidget(quick_open)
+
+        quick_update = QPushButton("刷新图表")
+        quick_update.clicked.connect(self._on_update_chart)
+        top_row.addWidget(quick_update)
+
+        quick_export = QPushButton("导出图表")
+        quick_export.clicked.connect(self._on_export_chart)
+        top_row.addWidget(quick_export)
+
+        self.toggle_sidebar_button = QPushButton("隐藏侧栏")
+        self.toggle_sidebar_button.setProperty("class", "toolbar-action")
+        self.toggle_sidebar_button.clicked.connect(self._toggle_sidebar)
+        top_row.addWidget(self.toggle_sidebar_button)
+
+        self.focus_chart_button = QPushButton("专注图表")
+        self.focus_chart_button.setProperty("class", "toolbar-action")
+        self.focus_chart_button.clicked.connect(self._toggle_chart_focus)
+        top_row.addWidget(self.focus_chart_button)
+
+        self.restore_layout_button = QPushButton("恢复布局")
+        self.restore_layout_button.setProperty("class", "ghost")
+        self.restore_layout_button.clicked.connect(self._restore_balanced_view)
+        top_row.addWidget(self.restore_layout_button)
+
+        self.quick_recent_frame = QFrame()
+        self.quick_recent_frame.setObjectName("quick-recent-frame")
+        self.quick_recent_frame.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
+        quick_recent_layout = QHBoxLayout(self.quick_recent_frame)
+        quick_recent_layout.setContentsMargins(0, 0, 0, 0)
+        quick_recent_layout.setSpacing(6)
+        quick_recent_layout.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.quick_recent_layout = quick_recent_layout
+        top_row.addWidget(self.quick_recent_frame)
+
+        # Row 2: dataset metrics (chips) under the brand.
+        bottom_row = QHBoxLayout()
+        bottom_row.setSpacing(10)
+        root.addLayout(bottom_row)
 
         self.dataset_badge = QLabel("数据集: 未加载")
         self.dataset_badge.setProperty("class", "metric-badge")
@@ -598,52 +648,9 @@ class MainWindow(QMainWindow):
 
         for badge in (self.dataset_badge, self.dataset_rows_badge, self.dataset_columns_badge):
             self._configure_metric_badge(badge)
-        layout.addWidget(self.dataset_badge)
-        layout.addWidget(self.dataset_rows_badge)
-        layout.addWidget(self.dataset_columns_badge)
+            bottom_row.addWidget(badge)
 
-        quick_open = QPushButton("打开数据")
-        quick_open.setProperty("class", "primary")
-        quick_open.clicked.connect(self._on_open_file)
-        layout.addWidget(quick_open)
-
-        quick_update = QPushButton("刷新图表")
-        quick_update.clicked.connect(self._on_update_chart)
-        layout.addWidget(quick_update)
-
-        quick_export = QPushButton("导出图表")
-        quick_export.clicked.connect(self._on_export_chart)
-        layout.addWidget(quick_export)
-
-        self.toggle_sidebar_button = QPushButton("隐藏侧栏")
-        self.toggle_sidebar_button.setProperty("class", "toolbar-action")
-        self.toggle_sidebar_button.clicked.connect(self._toggle_sidebar)
-        layout.addWidget(self.toggle_sidebar_button)
-
-        self.focus_chart_button = QPushButton("专注图表")
-        self.focus_chart_button.setProperty("class", "toolbar-action")
-        self.focus_chart_button.clicked.connect(self._toggle_chart_focus)
-        layout.addWidget(self.focus_chart_button)
-
-        self.restore_layout_button = QPushButton("恢复布局")
-        self.restore_layout_button.setProperty("class", "ghost")
-        self.restore_layout_button.clicked.connect(self._restore_balanced_view)
-        layout.addWidget(self.restore_layout_button)
-
-        self.quick_recent_frame = QFrame()
-        self.quick_recent_frame.setObjectName("quick-recent-frame")
-        self.quick_recent_frame.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
-        quick_recent_layout = QHBoxLayout(self.quick_recent_frame)
-        quick_recent_layout.setContentsMargins(0, 0, 0, 0)
-        quick_recent_layout.setSpacing(6)
-        # NOTE: layout alignment here is mostly a hint; the frame is constrained
-        # to its sizeHint via size policy and a preceding stretch in the parent.
-        quick_recent_layout.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.quick_recent_layout = quick_recent_layout
-
-        # Push recent file actions to the right without letting the container expand.
-        layout.addStretch(1)
-        layout.addWidget(self.quick_recent_frame)
+        bottom_row.addStretch(1)
 
         self._refresh_quick_recent_actions()
         return bar
