@@ -8,7 +8,8 @@ import pandas as pd
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import QCoreApplication, QSettings
-from PySide6.QtWidgets import QApplication, QLabel
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QLabel, QSizePolicy
 
 from visulite.models.app_state import DatasetMeta
 from visulite.ui.main_window import MainWindow
@@ -109,6 +110,23 @@ class MainWindowSmokeTests(unittest.TestCase):
         self.assertTrue(target.wordWrap())
         self.assertGreaterEqual(target.minimumWidth(), 100)
         self.assertGreaterEqual(target.width(), min(required_width, target.minimumWidth()))
+
+    def test_command_bar_badges_and_recent_container_policies(self) -> None:
+        # Badges should not be vertically stretched to fill the whole command bar.
+        for badge in (
+            self.window.dataset_badge,
+            self.window.dataset_rows_badge,
+            self.window.dataset_columns_badge,
+        ):
+            policy = badge.sizePolicy()
+            self.assertEqual(policy.verticalPolicy(), QSizePolicy.Fixed)
+            self.assertEqual(policy.horizontalPolicy(), QSizePolicy.Maximum)
+            self.assertTrue(bool(badge.alignment() & Qt.AlignVCenter))
+
+        recent = self.window.quick_recent_frame
+        recent_policy = recent.sizePolicy()
+        self.assertEqual(recent_policy.horizontalPolicy(), QSizePolicy.Maximum)
+        self.assertEqual(recent_policy.verticalPolicy(), QSizePolicy.Fixed)
 
     def test_data_mutation_undo_redo_and_table_search_workflow(self) -> None:
         frame = pd.DataFrame(

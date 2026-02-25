@@ -582,17 +582,22 @@ class MainWindow(QMainWindow):
         subtitle.setObjectName("hero-subtitle")
         brand_layout.addWidget(title)
         brand_layout.addWidget(subtitle)
-        layout.addLayout(brand_layout, 1)
+        # Avoid stretching the brand block to fill the whole bar.
+        layout.addLayout(brand_layout)
 
         self.dataset_badge = QLabel("数据集: 未加载")
         self.dataset_badge.setProperty("class", "metric-badge")
         self.dataset_badge.setAttribute(Qt.WA_StyledBackground, True)
+        self.dataset_badge.setMaximumWidth(280)
         self.dataset_rows_badge = QLabel("行数: -")
         self.dataset_rows_badge.setProperty("class", "metric-badge")
         self.dataset_rows_badge.setAttribute(Qt.WA_StyledBackground, True)
         self.dataset_columns_badge = QLabel("列数: -")
         self.dataset_columns_badge.setProperty("class", "metric-badge")
         self.dataset_columns_badge.setAttribute(Qt.WA_StyledBackground, True)
+
+        for badge in (self.dataset_badge, self.dataset_rows_badge, self.dataset_columns_badge):
+            self._configure_metric_badge(badge)
         layout.addWidget(self.dataset_badge)
         layout.addWidget(self.dataset_rows_badge)
         layout.addWidget(self.dataset_columns_badge)
@@ -627,14 +632,27 @@ class MainWindow(QMainWindow):
 
         self.quick_recent_frame = QFrame()
         self.quick_recent_frame.setObjectName("quick-recent-frame")
+        self.quick_recent_frame.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
         quick_recent_layout = QHBoxLayout(self.quick_recent_frame)
         quick_recent_layout.setContentsMargins(0, 0, 0, 0)
         quick_recent_layout.setSpacing(6)
+        # NOTE: layout alignment here is mostly a hint; the frame is constrained
+        # to its sizeHint via size policy and a preceding stretch in the parent.
+        quick_recent_layout.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.quick_recent_layout = quick_recent_layout
+
+        # Push recent file actions to the right without letting the container expand.
+        layout.addStretch(1)
         layout.addWidget(self.quick_recent_frame)
 
         self._refresh_quick_recent_actions()
         return bar
+
+    @staticmethod
+    def _configure_metric_badge(label: QLabel) -> None:
+        """Prevent KPI badges from being vertically stretched by their parent layout."""
+        label.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
+        label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
     def _create_card(self, title: str) -> tuple[QFrame, QVBoxLayout]:
         """Helper to create a consistent card-style container."""
@@ -1428,6 +1446,7 @@ class MainWindow(QMainWindow):
 
         if frame is None:
             self.dataset_badge.setText("数据集: 未加载")
+            self.dataset_badge.setToolTip("")
             self.dataset_rows_badge.setText("行数: -")
             self.dataset_columns_badge.setText("列数: -")
             self.file_rows_badge.setText("行数: -")
@@ -1435,9 +1454,18 @@ class MainWindow(QMainWindow):
             self.file_missing_badge.setText("缺失值: -")
             return
 
-        dataset_name = meta.path.name if getattr(meta, "path", None) else "当前数据"
+        dataset_path = getattr(meta, "path", None)
+        dataset_name = dataset_path.name if dataset_path else "当前数据"
+        self.dataset_badge.setToolTip(str(dataset_path) if dataset_path else dataset_name)
         missing_count = int(frame.isna().sum().sum())
-        self.dataset_badge.setText(f"数据集: {dataset_name}")
+
+        # Elide long dataset names to keep the command bar usable at narrow widths.
+        prefix = "数据集: "
+        max_w = int(getattr(self.dataset_badge, "maximumWidth", lambda: 280)() or 280)
+        fm = self.dataset_badge.fontMetrics()
+        available = max(60, max_w - fm.horizontalAdvance(prefix) - 16)
+        elided_name = fm.elidedText(dataset_name, Qt.ElideRight, available)
+        self.dataset_badge.setText(prefix + elided_name)
         self.dataset_rows_badge.setText(f"行数: {len(frame):,}")
         self.dataset_columns_badge.setText(f"列数: {len(frame.columns)}")
         self.file_rows_badge.setText(f"行数: {len(frame):,}")
