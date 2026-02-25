@@ -1,83 +1,179 @@
-# VisuLite
+<div align="center">
 
-交互式科研数据可视化与导出工具，基于 PySide6 + Matplotlib 构建。目标是为 CSV/TSV/Excel/JSON 数据提供「即开即用」的浏览、预处理与制图体验。
+# VisuLite Studio
 
-## 功能特点
+**A modern desktop analytics studio for fast, local, business-grade data visualization.**
 
-### 数据导入
+<p>
+  <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-22c55e"></a>
+  <img alt="Python" src="https://img.shields.io/badge/python-3.9%2B-3776AB">
+  <img alt="PySide6" src="https://img.shields.io/badge/UI-PySide6-41CD52">
+  <img alt="Matplotlib" src="https://img.shields.io/badge/chart-matplotlib-11557c">
+  <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20Desktop-0ea5e9">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-passing-22c55e">
+</p>
 
-- 📁 多格式数据导入（CSV/TSV/Excel/JSON）
-- 🔤 自动编码检测（UTF-8/GBK/UTF-16 等）
-- 📋 自动生成字段统计与缺失值报告
-- 🕐 最近文件快速访问（记录最近 5 个文件）
+<img src="docs/assets/visulite-preview.svg" alt="VisuLite Studio Preview" width="100%" />
 
-### 数据预处理
+</div>
 
-- 📊 数据表格展示，支持点击列头排序
-- ✂️ 数据截取（选取前 N 行）
-- 🔄 列类型转换（字符串/整数/浮点数/日期时间）
-- 🔍 文本关键词筛选与数值范围过滤
-- 🩹 缺失值处理（均值/中位数/0/前向/后向填充）
+---
 
-### 图表可视化
+## Overview
 
-- 📈 基础图表（折线图/柱状图/散点图/直方图）
-- 📊 扩展图表（箱线图/热力图）
-- 🎨 图表控制参数：
-  - 线型选择（实线/虚线/点划线）
-  - 点样式选择（圆形/叉号/加号/方形/三角形/菱形）
-  - 颜色方案（自动配色或自定义颜色）
-  - 图例与网格显示控制
-  - 坐标轴标签自定义
-- 🔧 Matplotlib 交互工具栏（缩放/平移/重置视图）
+VisuLite Studio is a production-oriented desktop app for teams that need to:
 
-### 导出功能
+- load structured files quickly
+- explore and clean data interactively
+- build high-quality charts
+- export visual results for reports and presentations
+- do all of that locally without a backend service
 
-- 💾 多格式导出（PNG/JPG/SVG/PDF）
-- ⚙️ DPI 设置（72-1200）
-- 📐 自定义图表尺寸
-- 📝 文件命名模板（支持 `{xcol}-{ycol}`、`figure-{timestamp}` 格式）
-- 🔄 批量绘图（对文件夹内所有数据文件应用相同配置）
+It is designed for speed, clarity, and operational usability.
 
-### 配置管理
+## Why VisuLite
 
-- ⚙️ 图表配置保存/加载（JSON 格式）
-- 🔁 批量复用图表设置
+- Local-first: no server dependency, no cloud lock-in.
+- Business-ready UX: command bar, quick actions, layout memory, focus mode.
+- End-to-end workflow: ingest -> preprocess -> visualize -> export.
+- Low learning curve: spreadsheet users can use it in minutes.
 
-## 快速开始
+## Feature Highlights
 
-```bash
+### Data Ingestion
+
+- CSV / TSV / Excel (`.xlsx`, `.xls`) / JSON support
+- Drag-and-drop loading
+- Recent file history and command-bar quick reopen
+- Encoding fallback for robust CSV/TSV loading
+
+### Data Preparation
+
+- Text filter and numeric range filter
+- Missing-value handling (`mean`, `median`, `zero`, `ffill`, `bfill`)
+- Column type conversion (`string`, `int`, `float`, `datetime`)
+- Row slicing for fast exploration
+- Undo / Redo for data operations (`Ctrl+Z`, `Ctrl+Y`, `Ctrl+Shift+Z`)
+
+### Visualization
+
+- Line, Bar, Scatter, Histogram, Boxplot, Heatmap
+- Theme switching (default / seaborn / ggplot / etc.)
+- Custom line style, marker style, color strategy
+- Legend and grid controls
+
+### Export & Batch
+
+- PNG / JPG / SVG / PDF export
+- Configurable DPI and figure size
+- Filename template support
+- Batch plotting for folders
+
+### Productivity UX
+
+- Global table search (`Ctrl+F`)
+- Sidebar toggle (`Ctrl+B`)
+- Chart focus mode (`Ctrl+2`)
+- Restore balanced layout (`Ctrl+1`)
+- Persistent UI preferences (split layout, mode, theme)
+- Edit history controls in menu with keyboard accelerators
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl+O` | Open data file |
+| `Ctrl+S` | Save chart config |
+| `Ctrl+E` | Export chart |
+| `Ctrl+Z` | Undo last data operation |
+| `Ctrl+Y` / `Ctrl+Shift+Z` | Redo last data operation |
+| `Ctrl+Shift+E` | Quick export PNG |
+| `Ctrl+F` | Focus global table search |
+| `Ctrl+B` | Toggle sidebar |
+| `Ctrl+2` | Toggle chart focus mode |
+| `Ctrl+1` | Restore default layout |
+| `F5` / `Enter` | Update chart |
+| `F1` | Show shortcuts help |
+| `Ctrl+Q` | Exit |
+
+## Architecture
+
+```text
+visulite/
+  app.py                  # app bootstrap
+  common/
+    logging.py            # logging setup
+  models/                 # state/config models
+  services/               # data loading, processing, plotting, export
+  ui/                     # main window, widgets, styles
+main.py                   # entrypoint
+tests/                    # unit/regression tests
+```
+
+## Quick Start
+
+### 1) Environment
+
+```powershell
+D:/tools/miniconda3/Scripts/activate
 conda activate visulite
+```
+
+### 2) Install dependencies
+
+```powershell
 pip install -r requirements.txt
+```
+
+### 3) Run app
+
+```powershell
 python main.py
 ```
 
-## 项目结构
+## Testing
 
-```
-visulite/
-  app.py                  # QApplication 启动封装
-  common/logging.py       # 统一日志
-  models/                 # AppState / ChartConfig / DataFrameModel
-  services/               # 数据加载、处理、绘图、导出、配置持久化
-    batch_plotter.py      # 批量绘图服务
-    chart_manager.py      # 图表渲染
-    config_manager.py     # 配置持久化
-    data_loader.py        # 多格式数据加载
-    data_processor.py     # 数据预处理
-    export_manager.py     # 图表导出
-    recent_files.py       # 最近文件记录
-  ui/                     # MainWindow + Matplotlib canvas + 工具栏
-main.py                   # 入口
-VisuLite_SRS.md           # 需求文档
+```powershell
+python -m unittest discover -s tests -p "test_*.py"
 ```
 
-## 开发指南
+## Packaging
 
-- 遵循模块边界：UI 只负责交互，其余逻辑注入到 services 层。
-- 所有新服务请配置日志命名空间 `visulite.<module>`，方便排查。
-- 新增图表类型时，扩展 `ChartManager.SUPPORTED_TYPES` 并更新 UI 下拉框。
+```powershell
+pyinstaller VisuLite.spec
+```
 
-## 许可证
+Build output:
 
-本项目采用 [MIT 许可证](LICENSE)。
+- `dist/VisuLite/`
+
+## Roadmap
+
+- [x] Modern command-bar shell and KPI badges
+- [x] Global table search and layout focus mode
+- [x] Heatmap/colorbar rendering regressions fixed
+- [x] Regression tests for critical services
+- [ ] Plugin-based data connectors (SQL/API)
+- [ ] Project/session management
+- [ ] Internationalization package (EN/ZH)
+- [ ] CI pipeline with release artifacts
+
+## Contributing
+
+Issues and PRs are welcome.
+
+1. Fork the repo
+2. Create a feature branch
+3. Add or update tests
+4. Open a pull request with a clear change summary
+
+See `CONTRIBUTING.md` for full local workflow and contribution standards.
+
+## Changelog
+
+User-visible changes are tracked in `CHANGELOG.md` under `Unreleased`.
+
+## License
+
+MIT License. See `LICENSE` for details.
+

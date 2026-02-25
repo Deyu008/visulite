@@ -1,0 +1,40 @@
+﻿<svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#1E293B"/>
+    </linearGradient>
+    <linearGradient id="header" x1="0" y1="0" x2="1280" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1D4ED8"/>
+      <stop offset="1" stop-color="#0EA5E9"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <rect x="24" y="20" width="1232" height="82" rx="16" fill="url(#header)"/>
+  <text x="58" y="65" fill="#FFFFFF" font-family="Segoe UI, Arial" font-size="30" font-weight="700">VisuLite Studio</text>
+  <text x="58" y="88" fill="#DBEAFE" font-family="Segoe UI, Arial" font-size="14">Data Exploration · Visualization · Export</text>
+
+  <rect x="24" y="120" width="380" height="576" rx="14" fill="#111827" stroke="#334155"/>
+  <rect x="420" y="120" width="836" height="282" rx="14" fill="#0B1220" stroke="#334155"/>
+  <rect x="420" y="418" width="836" height="278" rx="14" fill="#111827" stroke="#334155"/>
+
+  <rect x="50" y="164" width="328" height="56" rx="10" fill="#1F2937"/>
+  <rect x="50" y="236" width="328" height="12" rx="6" fill="#334155"/>
+  <rect x="50" y="258" width="300" height="12" rx="6" fill="#334155"/>
+  <rect x="50" y="280" width="310" height="12" rx="6" fill="#334155"/>
+
+  <rect x="458" y="160" width="760" height="200" rx="12" fill="#0F172A"/>
+  <polyline points="488,324 560,278 632,286 704,210 776,248 848,180 920,220 992,190 1064,240 1136,170" stroke="#38BDF8" stroke-width="4" fill="none"/>
+  <polyline points="488,334 560,310 632,316 704,274 776,286 848,248 920,270 992,238 1064,290 1136,230" stroke="#22C55E" stroke-width="4" fill="none"/>
+
+  <rect x="458" y="452" width="760" height="34" rx="8" fill="#1F2937"/>
+  <rect x="458" y="502" width="760" height="18" rx="6" fill="#334155"/>
+  <rect x="458" y="530" width="760" height="18" rx="6" fill="#334155"/>
+  <rect x="458" y="558" width="760" height="18" rx="6" fill="#334155"/>
+  <rect x="458" y="586" width="760" height="18" rx="6" fill="#334155"/>
+
+  <text x="50" y="154" fill="#94A3B8" font-family="Segoe UI, Arial" font-size="12">Control Panel</text>
+  <text x="458" y="148" fill="#94A3B8" font-family="Segoe UI, Arial" font-size="12">Chart Workspace</text>
+  <text x="458" y="442" fill="#94A3B8" font-family="Segoe UI, Arial" font-size="12">Data Grid</text>
+</svg>
